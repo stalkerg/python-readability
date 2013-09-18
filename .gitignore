@@ -9,3 +9,5 @@ dist
 /man
 nosetests.xml
 .coverage
+dev-env
+dev-env2.7
