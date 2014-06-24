@@ -4,6 +4,7 @@ from lxml.html import tostring
 import lxml.html
 
 import re
+import logging
 
 # Python 2.7 compatibility.
 import sys
@@ -111,10 +112,9 @@ def shorten_title(doc):
 def get_body(doc):
     [ elem.drop_tree() for elem in doc.xpath('.//script | .//link | .//style') ]
     raw_html = str(tostring(doc.body or doc))
-    cleaned = clean_attributes(raw_html)
     try:
-        #BeautifulSoup(cleaned) #FIXME do we really need to try loading it?
+        cleaned = clean_attributes(raw_html)
         return cleaned
     except Exception: #FIXME find the equivalent lxml error
-        #logging.error("cleansing broke html content: %s\n---------\n%s" % (raw_html, cleaned))
+        logging.error("cleansing broke html content: %s\n---------\n%s" % (raw_html, cleaned))
         return raw_html
