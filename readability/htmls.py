@@ -1,7 +1,6 @@
 from .cleaners import normalize_spaces, clean_attributes
 from .encoding import get_encoding
 from lxml.html import tostring
-import logging
 import lxml.html
 
 import re
@@ -10,8 +9,6 @@ import re
 import sys
 if sys.version < '3':
     str = unicode
-
-logging.getLogger().setLevel(logging.DEBUG)
 
 
 utf8_parser = lxml.html.HTMLParser(encoding='utf-8')
@@ -32,8 +29,8 @@ def js_re(src, pattern, flags, repl):
 
 def normalize_entities(cur_title):
     entities = {
-        u'\u2014':'-',
-        u'\u2013':'-',
+        u'\u2014': '-',
+        u'\u2013': '-',
         u'&mdash;': '-',
         u'&ndash;': '-',
         u'\u00A0': ' ',
@@ -41,7 +38,7 @@ def normalize_entities(cur_title):
         u'\u00BB': '"',
         u'&quot;': '"',
     }
-    for c, r in entities.iteritems():
+    for c, r in entities.items():
         if c in cur_title:
             cur_title = cur_title.replace(c, r)
 
@@ -52,8 +49,8 @@ def norm_title(title):
 
 def get_title(doc):
     title = doc.find('.//title')
-    if title is None or len(title.text) == 0:
-        return '[no-title]'
+    if title is None or title.text is None or len(title.text) == 0:
+        return ''
 
     return norm_title(title.text)
 

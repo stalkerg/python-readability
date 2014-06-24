@@ -1,9 +1,7 @@
 #!/usr/bin/env python
-import logging
 import re
 import sys
 
-from collections import defaultdict
 from lxml.etree import tostring
 from lxml.etree import tounicode
 from lxml.html import document_fromstring
@@ -16,27 +14,18 @@ from .htmls import get_body
 from .htmls import get_title
 from .htmls import shorten_title
 
+import logging
+
 # Python 2.7 compatibility.
 if sys.version < '3':
     str = unicode
-
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger()
-
 
 REGEXES = {
     'unlikelyCandidatesRe': re.compile('combx|comment|community|disqus|extra|foot|header|menu|remark|rss|shoutbox|sidebar|sponsor|ad-break|agegate|pagination|pager|popup|tweet|twitter', re.I),
     'okMaybeItsACandidateRe': re.compile('and|article|body|column|main|shadow', re.I),
     'positiveRe': re.compile('article|body|content|entry|hentry|main|page|pagination|post|text|blog|story', re.I),
     'negativeRe': re.compile('combx|comment|com-|contact|foot|footer|footnote|masthead|media|meta|outbrain|promo|related|scroll|shoutbox|sidebar|sponsor|shopping|tags|tool|widget', re.I),
-    'divToPElementsRe': re.compile('<(a|blockquote|dl|div|img|ol|p|pre|table|ul)', re.I),
-    #'replaceBrsRe': re.compile('(<br[^>]*>[ \n\r\t]*){2,}',re.I),
-    #'replaceFontsRe': re.compile('<(\/?)font[^>]*>',re.I),
-    #'trimRe': re.compile('^\s+|\s+$/'),
-    #'normalizeRe': re.compile('\s{2,}/'),
-    #'killBreaksRe': re.compile('(<br\s*\/?>(\s|&nbsp;?)*){1,}/'),
-    #'videoRe': re.compile('http:\/\/(www\.)?(youtube|vimeo)\.com', re.I),
-    #skipFootnoteLink:      /^\s*(\[?[a-z0-9]{1,2}\]?|^|edit|citation needed)\s*$/i,
+    'divToPElementsRe': re.compile('<(a|blockquote|dl|div|img|ol|p|pre|table|ul)', re.I)
 }
 
 
@@ -171,7 +160,7 @@ class Document:
                             html_partial=html_partial)
                 else:
                     if ruthless:
-                        log.debug("ruthless removal did not work. ")
+                        self.debug("ruthless removal did not work. ")
                         ruthless = False
                         self.debug(
                             ("ended up stripping too much - "
@@ -179,7 +168,7 @@ class Document:
                         # try again
                         continue
                     else:
-                        log.debug(
+                        self.debug(
                             ("Ruthless and lenient parsing did not work. "
                              "Returning raw html"))
                         article = self.html.find('body')
@@ -198,7 +187,7 @@ class Document:
                 else:
                     return cleaned_article
         except Exception as e:
-            log.exception('error getting summary: ')
+            logging.exception('error getting summary: ')
             raise Unparseable(str(e))
 
     def get_article(self, candidates, best_candidate, html_partial=False):
@@ -369,7 +358,7 @@ class Document:
 
     def debug(self, *a):
         if self.options.get('debug', False):
-            log.debug(*a)
+            logging.debug(*a)
 
     def remove_unlikely_candidates(self):
         for elem in self.html.iter():
