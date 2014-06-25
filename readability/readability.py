@@ -75,7 +75,7 @@ def compile_pattern(elements):
         return None
     if isinstance(elements, regexp_type):
         return elements
-    if isinstance(elements, basestring):
+    if isinstance(elements, str):
         elements = elements.split(',')
     return re.compile(u'|'.join([re.escape(x.lower()) for x in elements]), re.U)
 
