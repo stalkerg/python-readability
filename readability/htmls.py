@@ -8,13 +8,6 @@ import logging
 
 utf8_parser = lxml.html.HTMLParser(encoding='utf-8')
 
-def safe_get_text_content(raw_doc):
-    try:
-        return lxml.html.document_fromstring(raw_doc).text_content()
-    except Exception as e:
-        logging.warn('failed to get text content, raw_doc: %s, error: %s' % (raw_doc, str(e)))
-        return ""
-
 def build_doc(page):
     if isinstance(page, str):
         enc = None
@@ -146,7 +139,7 @@ def get_lead(doc):
     paragraphs = doc.cssselect("p")
     if paragraphs:
         lead = paragraphs[0]
-        lead = safe_get_text_content(lead)
+        lead = lead.text_content()
         if len(lead) > 50 and len(lead) < 300:
             return lead
 
