@@ -115,6 +115,6 @@ def get_body(doc):
     try:
         cleaned = clean_attributes(raw_html)
         return cleaned
-    except Exception: #FIXME find the equivalent lxml error
+    except Exception:
         logging.error("cleansing broke html content: %s\n---------\n%s" % (raw_html, cleaned))
         return raw_html

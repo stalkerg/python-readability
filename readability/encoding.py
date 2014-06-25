@@ -36,6 +36,9 @@ def custom_decode(encoding):
     """Overrides encoding when charset declaration
        or charset determination is a subset of a larger
        charset.  Created because of issues with Chinese websites"""
+    
+    if not encoding:
+        return "utf-8"
     encoding = encoding.lower()
     alternates = {
         'big5': 'big5hkscs',
