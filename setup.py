@@ -23,7 +23,8 @@ setup(
     packages=['readability'],
     install_requires=[
         "chardet",
-        lxml_requirement
+        lxml_requirement,
+        "cssselect"
         ],
     classifiers=[
         "Environment :: Web Environment",

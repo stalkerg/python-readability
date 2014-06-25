@@ -13,12 +13,9 @@ from .htmls import build_doc
 from .htmls import get_body
 from .htmls import get_title
 from .htmls import shorten_title
+from .htmls import get_first_image_url
 
 import logging
-
-# Python 2.7 compatibility.
-if sys.version < '3':
-    str = unicode
 
 REGEXES = {
     'unlikelyCandidatesRe': re.compile('combx|comment|community|disqus|extra|foot|header|menu|remark|rss|shoutbox|sidebar|sponsor|ad-break|agegate|pagination|pager|popup|tweet|twitter', re.I),
@@ -132,6 +129,9 @@ class Document:
 
     def get_clean_html(self):
          return clean_attributes(tounicode(self.html))
+
+    def first_image_url(self):
+        return get_first_image_url(self._html(True))
 
     def summary(self, html_partial=False):
         """Generate the summary of the html docuemnt
