@@ -15,6 +15,7 @@ from .htmls import get_title
 from .htmls import shorten_title
 from .htmls import get_first_image_url
 from .htmls import get_image_from_meta
+from .htmls import get_lead
 
 import logging
 
@@ -142,6 +143,11 @@ class Document:
         first_image = get_first_image_url(self._html(False))
         meta_image = get_image_from_meta(self._html(True))
         return meta_image or first_image
+
+    def lead(self):
+         """ Need call summary before!
+        """
+        return get_lead(self._html(False))
 
     def summary(self, html_partial=False):
         """Generate the summary of the html docuemnt
