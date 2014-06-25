@@ -131,7 +131,7 @@ class Document:
          return clean_attributes(tounicode(self.html))
 
     def first_image_url(self):
-        return get_first_image_url(self._html(True))
+        return get_first_image_url(self._html(False))
 
     def summary(self, html_partial=False):
         """Generate the summary of the html docuemnt
