@@ -145,7 +145,7 @@ class Document:
         return meta_image or first_image
 
     def lead(self):
-         """ Need call summary before!
+        """ Need call summary before!
         """
         return get_lead(self._html(False))
 
