@@ -14,6 +14,7 @@ from .htmls import get_body
 from .htmls import get_title
 from .htmls import shorten_title
 from .htmls import get_first_image_url
+from .htmls import get_image_from_meta
 
 import logging
 
@@ -131,7 +132,16 @@ class Document:
          return clean_attributes(tounicode(self.html))
 
     def first_image_url(self):
+        """ For good result need call summary before
+        """
         return get_first_image_url(self._html(False))
+
+    def main_image_url(self):
+        """ As first_image_url but with meta images
+        """
+        first_image = get_first_image_url(self._html(False))
+        meta_image = get_image_from_meta(self._html(True))
+        return meta_image or first_image
 
     def summary(self, html_partial=False):
         """Generate the summary of the html docuemnt

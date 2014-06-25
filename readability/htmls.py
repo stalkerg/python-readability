@@ -125,3 +125,19 @@ def get_first_image_url(doc):
         return images[0].get("src")
     else:
         return None
+
+def get_image_from_meta(doc):
+    og_image = doc.xpath('/html/head/meta[@property="og:image"]')
+    if og_image:
+        og_image_content = og_image[0].get("content")
+        if og_image_content:
+            return og_image_content
+    
+    twitter_image = doc.xpath('/html/head/meta[@name="twitter:image:src"]')
+    if twitter_image:
+        twitter_image_content = twitter_image[0].get("content")
+        if twitter_image_content:
+            return twitter_image_content
+
+    return None
+
