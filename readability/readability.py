@@ -272,8 +272,7 @@ class Document:
         link_length = 0
         for i in elem.findall(".//a"):
             link_length += text_length(i)
-        #if len(elem.findall(".//div") or elem.findall(".//p")):
-        #    link_length = link_length
+        
         total_length = text_length(elem)
         return float(link_length) / max(total_length, 1)
 
@@ -309,10 +308,7 @@ class Document:
             content_score = 1
             content_score += len(inner_text.split(','))
             content_score += min((inner_text_len / 100), 3)
-            #if elem not in candidates:
-            #    candidates[elem] = self.score_node(elem)
-
-            #WTF? candidates[elem]['content_score'] += content_score
+            
             candidates[parent_node]['content_score'] += content_score
             if grand_parent_node is not None:
                 candidates[grand_parent_node]['content_score'] += content_score / 2.0
@@ -471,12 +467,6 @@ class Document:
                         content_score = candidates[parent_node]['content_score']
                     else:
                         content_score = 0
-                #if parent_node is not None:
-                    #pweight = self.class_weight(parent_node) + content_score
-                    #pname = describe(parent_node)
-                #else:
-                    #pweight = 0
-                    #pname = "no parent"
                 to_remove = False
                 reason = ""
 
@@ -505,25 +495,6 @@ class Document:
                 elif (counts["embed"] == 1 and content_length < 75) or counts["embed"] > 1:
                     reason = "<embed>s with too short content length, or too many <embed>s"
                     to_remove = True
-#                if el.tag == 'div' and counts['img'] >= 1 and to_remove:
-#                    imgs = el.findall('.//img')
-#                    valid_img = False
-#                    self.debug(tounicode(el))
-#                    for img in imgs:
-#
-#                        height = img.get('height')
-#                        text_length = img.get('text_length')
-#                        self.debug ("height %s text_length %s" %(repr(height), repr(text_length)))
-#                        if to_int(height) >= 100 or to_int(text_length) >= 100:
-#                            valid_img = True
-#                            self.debug("valid image" + tounicode(img))
-#                            break
-#                    if valid_img:
-#                        to_remove = False
-#                        self.debug("Allowing %s" %el.text_content())
-#                        for desnode in self.tags(el, "table", "ul", "div"):
-#                            allowed[desnode] = True
-
                     #find x non empty preceding and succeeding siblings
                     i, j = 0, 0
                     x = 1
@@ -609,12 +580,7 @@ def main():
 
     file = None
     if options.url:
-        # Python 2.7 compatibility
-        # Python 2.7 support.
-        try:
-            from urllib import request
-        except ImportError:
-            import urllib2 as request
+        from urllib import request
         file = request.urlopen(options.url)
     else:
         file = open(args[0], 'rt')
