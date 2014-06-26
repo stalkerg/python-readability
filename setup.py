@@ -17,7 +17,7 @@ setup(
     author_email="stalkerg@gmail.com, burchik@gmail.com",
     description="python3 port of python-readability tool",
     test_suite = "tests.test_article_only",
-    long_description=open("README").read(),
+    long_description=open("README.md").read(),
     license="Apache License 2.0",
     url="http://github.com/stalkerg/python-readability",
     packages=['readability'],
