@@ -40,10 +40,3 @@ Document() kwarg options:
  - **positive_keywords**: the list of positive search patterns in classes and ids, for example: ["news-item", "block"]
  - **negative_keywords**: the list of negative search patterns in classes and ids, for example: ["mysidebar", "related", "ads"]
 
-
-Updates
-
- - 0.2.5 Update setup.py for uploading .tar.gz to pypi
- - 0.2.6 Don't crash on documents with no title
- - 0.2.6.1 Document.short_title() properly works
- - 0.3 Added Document.encoding, positive_keywords and negative_keywords
