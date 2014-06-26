@@ -11,8 +11,7 @@ Installation::
 
 Usage::
 
-```
-#!python
+```python
     from readability.readability import Document
     import urllib
     html = urllib.urlopen(url).read()
