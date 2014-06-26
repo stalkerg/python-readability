@@ -320,7 +320,7 @@ class Document:
             candidate = candidates[elem]
             ld = self.get_link_density(elem)
             score = candidate['content_score']
-            self.debug("Candid: %6.3f %s link density %.3f -> %6.3f" % (
+            self.debug("Candidate: %6.3f %s link density %.3f -> %6.3f" % (
                 score,
                 describe(elem),
                 ld,
