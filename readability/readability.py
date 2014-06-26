@@ -19,13 +19,6 @@ from .htmls import get_lead
 
 import logging
 
-REGEXES = {
-    'unlikelyCandidatesRe': re.compile('combx|comment|community|disqus|extra|foot|header|menu|remark|rss|shoutbox|sidebar|sponsor|ad-break|agegate|pagination|pager|popup|tweet|twitter', re.I),
-    'okMaybeItsACandidateRe': re.compile('and|article|body|column|main|shadow', re.I),
-    'positiveRe': re.compile('article|body|content|entry|hentry|main|page|pagination|post|text|blog|story', re.I),
-    'negativeRe': re.compile('combx|comment|com-|contact|foot|footer|footnote|masthead|media|meta|outbrain|promo|related|scroll|shoutbox|sidebar|sponsor|shopping|tags|tool|widget', re.I),
-    'divToPElementsRe': re.compile('<(a|blockquote|dl|div|img|ol|p|pre|table|ul)', re.I)
-}
 
 
 class Unparseable(ValueError):
@@ -82,6 +75,14 @@ class Document:
     """Class to build a etree document out of html."""
     TEXT_LENGTH_THRESHOLD = 25
     RETRY_LENGTH = 250
+
+    REGEXES = {
+        'unlikelyCandidatesRe': re.compile('combx|comment|community|disqus|extra|foot|header|menu|remark|rss|shoutbox|sidebar|sponsor|ad-break|agegate|pagination|pager|popup|tweet|twitter', re.I),
+        'okMaybeItsACandidateRe': re.compile('and|article|body|column|main|shadow', re.I),
+        'positiveRe': re.compile('article|body|content|entry|hentry|main|page|pagination|post|text|blog|story', re.I),
+        'negativeRe': re.compile('combx|comment|com-|contact|foot|footer|footnote|masthead|media|meta|outbrain|promo|related|scroll|shoutbox|sidebar|sponsor|shopping|tags|tool|widget', re.I),
+        'divToPElementsRe': re.compile('<(a|blockquote|dl|div|img|ol|p|pre|table|ul)', re.I)
+    }
 
     def __init__(self, input, positive_keywords=None, negative_keywords=None, **options):
         """Generate the document
@@ -336,10 +337,10 @@ class Document:
         weight = 0
         for feature in [e.get('class', None), e.get('id', None)]:
             if feature:
-                if REGEXES['negativeRe'].search(feature):
+                if self.REGEXES['negativeRe'].search(feature):
                     weight -= 25
 
-                if REGEXES['positiveRe'].search(feature):
+                if self.REGEXES['positiveRe'].search(feature):
                     weight += 25
 
                 if self.positive_keywords and self.positive_keywords.search(feature):
@@ -382,7 +383,7 @@ class Document:
             if len(s) < 2:
                 continue
             #self.debug(s)
-            if REGEXES['unlikelyCandidatesRe'].search(s) and (not REGEXES['okMaybeItsACandidateRe'].search(s)) and elem.tag not in ['html', 'body']:
+            if self.REGEXES['unlikelyCandidatesRe'].search(s) and (not self.REGEXES['okMaybeItsACandidateRe'].search(s)) and elem.tag not in ['html', 'body']:
                 self.debug("Removing unlikely candidate - %s" % describe(elem))
                 elem.drop_tree()
 
@@ -394,7 +395,7 @@ class Document:
             # are not direct children of elem
             # This results in incorrect results in case there is an <img>
             # buried within an <a> for example
-            if not REGEXES['divToPElementsRe'].search(
+            if not self.REGEXES['divToPElementsRe'].search(
                     str(b''.join(map(tostring, list(elem))))):
                 #self.debug("Altering %s to p" % (describe(elem)))
                 elem.tag = "p"
