@@ -40,17 +40,6 @@ def describe(node, depth=1):
     return name
 
 
-def to_int(x):
-    if not x:
-        return None
-    x = x.strip()
-    if x.endswith('px'):
-        return int(x[:-2])
-    if x.endswith('em'):
-        return int(x[:-2]) * 12
-    return int(x)
-
-
 def clean(text):
     text = re.sub('\s*\n\s*', '\n', text)
     text = re.sub('[ \t]{2,}', ' ', text)
@@ -62,45 +51,84 @@ def text_length(i):
 
 regexp_type = type(re.compile('hello, world'))
 
-def compile_pattern(elements):
+def compile_pattern(elements, mode=re.U):
     if not elements:
         return None
     if isinstance(elements, regexp_type):
         return elements
     if isinstance(elements, str):
         elements = elements.split(',')
-    return re.compile(u'|'.join([re.escape(x.lower()) for x in elements]), re.U)
+    return re.compile(u'|'.join([re.escape(x.lower()) for x in elements]), mode)
 
 class Document:
     """Class to build a etree document out of html."""
-    TEXT_LENGTH_THRESHOLD = 25
-    RETRY_LENGTH = 250
+    UNLIKELY_CANDIDATES = [
+        "combx", "comment", "community",
+        "disqus", "extra|foot", "header",
+        "menu", "remark", "rss",
+        "shoutbox", "sidebar", "sponsor",
+        "ad-break", "agegate", "pagination",
+        "pager", "popup", "tweet",
+        "twitter"
+    ]
+    LIKELY_CANDIDATES = [
+        "and", "article", "body", 
+        "column", "main", "shadow"
+    ]
+    POSITIVE_STRINGS = [
+        "article", "body", "content", 
+        "entry", "hentry", "main", 
+        "page", "pagination", "post", 
+        "text", "blog", "story"
+    ]
+    NEGATIVE_STRINGS = [
+        "combx", "comment", "com-",
+        "contact", "foot", "footer",
+        "footnote", "masthead", "media",
+        "meta", "outbrain", "promo", 
+        "related", "scroll", "shoutbox",
+        "sidebar", "sponsor", "shopping",
+        "tags", "tool", "widget"
+    ]
+
 
     REGEXES = {
-        'unlikelyCandidatesRe': re.compile('combx|comment|community|disqus|extra|foot|header|menu|remark|rss|shoutbox|sidebar|sponsor|ad-break|agegate|pagination|pager|popup|tweet|twitter', re.I),
-        'okMaybeItsACandidateRe': re.compile('and|article|body|column|main|shadow', re.I),
-        'positiveRe': re.compile('article|body|content|entry|hentry|main|page|pagination|post|text|blog|story', re.I),
-        'negativeRe': re.compile('combx|comment|com-|contact|foot|footer|footnote|masthead|media|meta|outbrain|promo|related|scroll|shoutbox|sidebar|sponsor|shopping|tags|tool|widget', re.I),
+        'unlikelyCandidatesRe': compile_pattern(UNLIKELY_CANDIDATES, re.I),
+        'okMaybeItsACandidateRe': compile_pattern(LIKELY_CANDIDATES, re.I),
+        'positiveRe': compile_pattern(POSITIVE_STRINGS, re.I),
+        'negativeRe': compile_pattern(NEGATIVE_STRINGS, re.I),
         'divToPElementsRe': re.compile('<(a|blockquote|dl|div|img|ol|p|pre|table|ul)', re.I)
     }
 
-    def __init__(self, input, positive_keywords=None, negative_keywords=None, **options):
+    def __init__(self, input, 
+            base_url=None, debug=False,
+            positive_keywords=None, negative_keywords=None, 
+            min_text_length=25, retry_length=250):
         """Generate the document
 
         :param input: string of the html content.
+        :type input: unicode
+        :param base_url: will allow adjusting links to be absolute
+        :type base_url: unicode
+        :param positive_keywords: the list of positive search patterns in classes and ids
+        :type positive_keywords: list
+        :param negative_keywords: the list of negative search patterns in classes and ids
+        :type negative_keywords: list
+        :param debug: output debug messages
+        :type debug: bool
+        :param min_text_length: minimum text size
+        :type min_text_length: int
+        :param retry_length: acceptable length of the text
+        :type retry_length: int
 
-        kwargs:
-            - attributes:
-            - debug: output debug messages
-            - min_text_length:
-            - retry_length:
-            - url: will allow adjusting links to be absolute
-            - positive_keywords: the list of positive search patterns in classes and ids, for example: ["news-item", "block"]
-            - negative_keywords: the list of negative search patterns in classes and ids, for example: ["mysidebar", "related", "ads"]
-            Also positive_keywords and negative_keywords could be a regexp.
+
+        Also positive_keywords and negative_keywords could be a regexp.
         """
         self.input = input
-        self.options = options
+        self.base_url = base_url
+        self.enable_debug = debug
+        self.min_text_length = min_text_length
+        self.retry_length = retry_length
         self.html = None
         self.encoding = None
         self.positive_keywords = compile_pattern(positive_keywords)
@@ -108,15 +136,15 @@ class Document:
 
     def _html(self, force=False):
         if force or self.html is None:
-            self.html = self._parse(self.input)
+            self.html = self.__parse(self.input)
         return self.html
 
-    def _parse(self, input):
+    def __parse(self, input):
         doc, self.encoding = build_doc(input)
         doc = html_cleaner.clean_html(doc)
-        base_href = self.options.get('url', None)
-        if base_href:
-            doc.make_links_absolute(base_href, resolve_base_href=True)
+
+        if self.base_url:
+            doc.make_links_absolute(self.base_url, resolve_base_href=True)
         else:
             doc.resolve_base_href()
         return doc
@@ -168,12 +196,12 @@ class Document:
                 if ruthless:
                     self.remove_unlikely_candidates()
                 self.transform_misused_divs_into_paragraphs()
-                candidates = self.score_paragraphs()
+                candidates = self.__score_paragraphs()
 
-                best_candidate = self.select_best_candidate(candidates)
+                best_candidate = self.__select_best_candidate(candidates)
 
                 if best_candidate:
-                    article = self.get_article(candidates, best_candidate,
+                    article = self.__get_article(candidates, best_candidate,
                             html_partial=html_partial)
                 else:
                     if ruthless:
@@ -191,12 +219,9 @@ class Document:
                         article = self.html.find('body')
                         if article is None:
                             article = self.html
-                cleaned_article = self.sanitize(article, candidates)
+                cleaned_article = self.__sanitize(article, candidates)
                 article_length = len(cleaned_article or '')
-                retry_length = self.options.get(
-                    'retry_length',
-                    self.RETRY_LENGTH)
-                of_acceptable_length = article_length >= retry_length
+                of_acceptable_length = article_length >= self.retry_length
                 if ruthless and not of_acceptable_length:
                     ruthless = False
                     # Loop through and try again.
@@ -207,13 +232,12 @@ class Document:
             logging.exception('error getting summary: ')
             raise Unparseable(str(e))
 
-    def get_article(self, candidates, best_candidate, html_partial=False):
+    def __get_article(self, candidates, best_candidate, html_partial=False):
         # Now that we have the top candidate, look through its siblings for
         # content that might also be related.
         # Things like preambles, content split by ads that we removed, etc.
-        sibling_score_threshold = max([
-            10,
-            best_candidate['content_score'] * 0.2])
+        sibling_score_threshold = max([10, best_candidate['content_score'] * 0.2])
+
         # create a new html document with a html->body->div
         if html_partial:
             output = fragment_fromstring('<div/>')
@@ -232,7 +256,7 @@ class Document:
                 append = True
 
             if sibling.tag == "p":
-                link_density = self.get_link_density(sibling)
+                link_density = self.__get_link_density(sibling)
                 node_content = sibling.text or ""
                 node_length = len(node_content)
 
@@ -254,7 +278,7 @@ class Document:
         #    output.append(best_elem)
         return output
 
-    def select_best_candidate(self, candidates):
+    def __select_best_candidate(self, candidates):
         sorted_candidates = sorted(list(candidates.values()), key=lambda x: x['content_score'], reverse=True)
         for candidate in sorted_candidates[:5]:
             elem = candidate['elem']
@@ -268,7 +292,7 @@ class Document:
         best_candidate = sorted_candidates[0]
         return best_candidate
 
-    def get_link_density(self, elem):
+    def __get_link_density(self, elem):
         link_length = 0
         for i in elem.findall(".//a"):
             link_length += text_length(i)
@@ -276,10 +300,7 @@ class Document:
         total_length = text_length(elem)
         return float(link_length) / max(total_length, 1)
 
-    def score_paragraphs(self, ):
-        MIN_LEN = self.options.get(
-            'min_text_length',
-            self.TEXT_LENGTH_THRESHOLD)
+    def __score_paragraphs(self, ):
         candidates = {}
         ordered = []
         for elem in self.tags(self._html(), "p", "pre", "td"):
@@ -293,7 +314,7 @@ class Document:
 
             # If this paragraph is less than 25 characters
             # don't even count it.
-            if inner_text_len < MIN_LEN:
+            if inner_text_len < self.min_text_length:
                 continue
 
             if parent_node not in candidates:
@@ -318,7 +339,7 @@ class Document:
         # mostly unaffected by this operation.
         for elem in ordered:
             candidate = candidates[elem]
-            ld = self.get_link_density(elem)
+            ld = self.__get_link_density(elem)
             score = candidate['content_score']
             self.debug("Candidate: %6.3f %s link density %.3f -> %6.3f" % (
                 score,
@@ -329,7 +350,7 @@ class Document:
 
         return candidates
 
-    def class_weight(self, e):
+    def __class_weight(self, e):
         weight = 0
         for feature in [e.get('class', None), e.get('id', None)]:
             if feature:
@@ -354,7 +375,7 @@ class Document:
         return weight
 
     def score_node(self, elem):
-        content_score = self.class_weight(elem)
+        content_score = self.__class_weight(elem)
         name = elem.tag.lower()
         if name == "div":
             content_score += 5
@@ -370,7 +391,7 @@ class Document:
         }
 
     def debug(self, *a):
-        if self.options.get('debug', False):
+        if self.enable_debug:
             logging.debug(*a)
 
     def remove_unlikely_candidates(self):
@@ -426,11 +447,9 @@ class Document:
             for e in reversed(node.findall('.//%s' % tag_name)):
                 yield e
 
-    def sanitize(self, node, candidates):
-        MIN_LEN = self.options.get('min_text_length',
-            self.TEXT_LENGTH_THRESHOLD)
+    def __sanitize(self, node, candidates):
         for header in self.tags(node, "h1", "h2", "h3", "h4", "h5", "h6"):
-            if self.class_weight(header) < 0 or self.get_link_density(header) > 0.33:
+            if self.__class_weight(header) < 0 or self.__get_link_density(header) > 0.33:
                 header.drop_tree()
 
         for elem in self.tags(node, "form", "iframe", "textarea"):
@@ -440,7 +459,7 @@ class Document:
         for el in self.reverse_tags(node, "table", "ul", "div"):
             if el in allowed:
                 continue
-            weight = self.class_weight(el)
+            weight = self.__class_weight(el)
             if el in candidates:
                 content_score = candidates[el]['content_score']
                 #print '!',el, '-> %6.3f' % content_score
@@ -460,7 +479,7 @@ class Document:
 
                 # Count the text length excluding any surrounding whitespace
                 content_length = text_length(el)
-                link_density = self.get_link_density(el)
+                link_density = self.__get_link_density(el)
                 parent_node = el.getparent()
                 if parent_node is not None:
                     if parent_node in candidates:
@@ -481,7 +500,7 @@ class Document:
                 elif counts["input"] > (counts["p"] / 3):
                     reason = "less than 3x <p>s than <input>s"
                     to_remove = True
-                elif content_length < (MIN_LEN) and (counts["img"] == 0 or counts["img"] > 2):
+                elif content_length < (self.min_text_length) and (counts["img"] == 0 or counts["img"] > 2):
                     reason = "too short content length %s without a single image" % content_length
                     to_remove = True
                 elif weight < 25 and link_density > 0.2:
@@ -529,71 +548,6 @@ class Document:
                     #self.debug("pname %s pweight %.3f" %(pname, pweight))
                     el.drop_tree()
 
-        for el in ([node] + [n for n in node.iter()]):
-            if not self.options.get('attributes', None):
-                #el.attrib = {} #FIXME:Checkout the effects of disabling this
-                pass
-
         self.html = node
         return self.get_clean_html()
 
-
-class HashableElement():
-    def __init__(self, node):
-        self.node = node
-        self._path = None
-
-    def _get_path(self):
-        if self._path is None:
-            reverse_path = []
-            node = self.node
-            while node is not None:
-                node_id = (node.tag, tuple(node.attrib.items()), node.text)
-                reverse_path.append(node_id)
-                node = node.getparent()
-            self._path = tuple(reverse_path)
-        return self._path
-    path = property(_get_path)
-
-    def __hash__(self):
-        return hash(self.path)
-
-    def __eq__(self, other):
-        return self.path == other.path
-
-    def __getattr__(self, tag):
-        return getattr(self.node, tag)
-
-
-def main():
-    from optparse import OptionParser
-    parser = OptionParser(usage="%prog: [options] [file]")
-    parser.add_option('-v', '--verbose', action='store_true')
-    parser.add_option('-u', '--url', default=None, help="use URL instead of a local file")
-    parser.add_option('-p', '--positive-keywords', default=None, help="positive keywords (separated with comma)", action='store')
-    parser.add_option('-n', '--negative-keywords', default=None, help="negative keywords (separated with comma)", action='store')
-    (options, args) = parser.parse_args()
-
-    if not (len(args) == 1 or options.url):
-        parser.print_help()
-        sys.exit(1)
-
-    file = None
-    if options.url:
-        from urllib import request
-        file = request.urlopen(options.url)
-    else:
-        file = open(args[0], 'rt')
-    enc = sys.__stdout__.encoding or 'utf-8' # XXX: this hack could not always work, better to set PYTHONIOENCODING
-    try:
-        print(Document(file.read(),
-            debug=options.verbose,
-            url=options.url,
-            positive_keywords = options.positive_keywords,
-            negative_keywords = options.negative_keywords,
-        ).summary().encode(enc, 'replace'))
-    finally:
-        file.close()
-
-if __name__ == '__main__':
-    main()
