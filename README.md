@@ -28,9 +28,5 @@ Document() __init__ arguments:
  - **debug**: output debug messages
  - **min_text_length**: minimum text size
  - **retry_length**: acceptable length of the text
-
- - **positive_keywords**: the list of positive search patterns in classes and ids,
- for example: ["news-item", "block"]
- - **negative_keywords**: the list of negative search patterns in classes and ids,
- for example: ["mysidebar", "related", "ads"]
-
+ - **positive_keywords**: the list of positive search patterns in classes and ids, for example: ["news-item", "block"]
+ - **negative_keywords**: the list of negative search patterns in classes and ids, for example: ["mysidebar", "related", "ads"]
