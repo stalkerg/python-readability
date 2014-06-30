@@ -20,9 +20,8 @@ readable_article = Document(html).summary()
 readable_title = Document(html).short_title()
 ```
 
-```
+Document() \__init\__ arguments:
 
-Document() __init__ arguments:
  - **input**: input html as text
  - **base_url**: will allow adjusting links to be absolute
  - **debug**: output debug messages
