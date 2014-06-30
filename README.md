@@ -20,23 +20,17 @@ readable_article = Document(html).summary()
 readable_title = Document(html).short_title()
 ```
 
-Command-line usage::
-```bash
-python -m readability.readability -u http://pypi.python.org/pypi/readability-lxml
 ```
 
-Using positive/negative keywords example::
-```bash
-python -m readability.readability -p intro -n newsindex,homepage-box,news-section -u http://python.org
-```
-
-Document() kwarg options:
-
- - **attributes**:
+Document() __init__ arguments:
+ - **input**: input html as text
+ - **base_url**: will allow adjusting links to be absolute
  - **debug**: output debug messages
- - **min_text_length**:
- - **retry_length**:
- - **url**: will allow adjusting links to be absolute
- - **positive_keywords**: the list of positive search patterns in classes and ids, for example: ["news-item", "block"]
- - **negative_keywords**: the list of negative search patterns in classes and ids, for example: ["mysidebar", "related", "ads"]
+ - **min_text_length**: minimum text size
+ - **retry_length**: acceptable length of the text
+
+ - **positive_keywords**: the list of positive search patterns in classes and ids,
+ for example: ["news-item", "block"]
+ - **negative_keywords**: the list of negative search patterns in classes and ids,
+ for example: ["mysidebar", "related", "ads"]
 
