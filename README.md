@@ -17,9 +17,9 @@ import urllib
 
 html = urllib.urlopen(url).read()
 doc = Document(html)
-doc.parse(["summary", "short\_title"])
+doc.parse(["summary", "short_title"])
 readable_article = doc.summary()
-readable\_title = doc.short\_title()
+readable_title = doc.short_title()
 ```
 
 Document() \__init\__ arguments:
