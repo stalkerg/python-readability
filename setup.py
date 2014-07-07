@@ -12,7 +12,7 @@ if sys.platform == 'darwin':
 
 setup(
     name="readability-lxml",
-    version="0.4.0.0",
+    version="0.4.0.1",
     author="Yuri Zhuravlev aka (stalkerg), Yuri Baburov",
     author_email="stalkerg@gmail.com, burchik@gmail.com",
     description="python3 port of python-readability tool",

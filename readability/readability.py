@@ -235,7 +235,7 @@ class Document:
         if "first_image_url" in full_params_list:
             self.__first_image_url = get_first_image_url(self.__cut_html)
         if "main_image_url" in full_params_list:
-            if not self.__first_image:
+            if not self.__first_image_url:
                 self.__first_image_url = get_first_image_url(self.__cut_html)
             meta_image = get_image_from_meta(self.__orig_html)
             self.__main_image_url = meta_image or self.__first_image_url
