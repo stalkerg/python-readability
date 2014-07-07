@@ -18,12 +18,60 @@ from .htmls import get_image_from_meta
 from .htmls import get_lead
 
 import logging
-
+from urllib.parse import urlparse
 
 
 class Unparseable(ValueError):
     pass
 
+def contains_one_or_more_tags(node, *tags):
+    """
+    >>> contains_one_or_more_tags(fragment_fromstring('<div/>'), 'div')
+    False
+    >>> contains_one_or_more_tags(fragment_fromstring('<div>   </div>'), 'div', 'p')
+    False
+    >>> contains_one_or_more_tags(fragment_fromstring('<div>  fsfdsff<a>oi mundo</a></div>'), 'p', 'a')
+    True
+    >>> contains_one_or_more_tags(fragment_fromstring('<div>  fsfdsff<a>oi mundo</a></div>'), 'a')
+    True
+    """
+    for tag in tags:
+        if node.find('.//%s' % tag) is not None:
+            return True
+    return False
+
+
+def has_text(node):
+    """
+    >>> has_text(fragment_fromstring('<div/>'))
+    False
+    >>> has_text(fragment_fromstring('<div>   </div>'))
+    False
+    >>> has_text(fragment_fromstring('<div>  fsfdsff </div>'))
+    True
+    >>> has_text(fragment_fromstring('<div>  fsfdsff<a>oi mundo</a></div>'))
+    True
+    """
+    if node.text is not None and node.text.strip():
+        return True
+    else:
+        return False
+
+
+def is_empty_node(node):
+    """
+    >>> is_empty_node(fragment_fromstring('<div/>'))
+    True
+    >>> is_empty_node(fragment_fromstring('<div>   </div>'))
+    True
+    >>> is_empty_node(fragment_fromstring('<div>  fsfdsff </div>'))
+    False
+    >>> is_empty_node(fragment_fromstring('<div><a>Ola mundo</a></div>'))
+    False
+    >>> is_empty_node(fragment_fromstring('<div>  fsfdsff<a>oi mundo</a></div>'))
+    False
+    """
+    return not has_text(node) and not node.getchildren()
 
 def describe(node, depth=1):
     if not hasattr(node, 'tag'):
@@ -97,6 +145,7 @@ class Document:
         'okMaybeItsACandidateRe': compile_pattern(LIKELY_CANDIDATES, re.I),
         'positiveRe': compile_pattern(POSITIVE_STRINGS, re.I),
         'negativeRe': compile_pattern(NEGATIVE_STRINGS, re.I),
+        'shareLinks': re.compile("twitter.com\/share|pinterest.com\/pin\/create|facebook.com\/sharer", re.I),
         'divToPElementsRe': re.compile('<(a|blockquote|dl|div|img|ol|p|pre|table|ul)', re.I)
     }
 
@@ -126,18 +175,27 @@ class Document:
         """
         self.input = input
         self.base_url = base_url
+        if self.base_url:
+            parsed_url = urlparse(self.base_url)
+            self.base_url = "%s://%s" % (parsed_url.scheme, parsed_url.hostname)
         self.enable_debug = debug
         self.min_text_length = min_text_length
         self.retry_length = retry_length
-        self.html = None
         self.encoding = None
         self.positive_keywords = compile_pattern(positive_keywords)
         self.negative_keywords = compile_pattern(negative_keywords)
 
-    def _html(self, force=False):
-        if force or self.html is None:
-            self.html = self.__parse(self.input)
-        return self.html
+        #Cache attributes
+        self.__orig_html = None
+        self.__cut_html = None
+        self.__title = None
+        self.__short_title = None
+        self.__content = None
+        self.__summary = None
+        self.__lead = None
+        self.__first_image_url = None
+        self.__main_image_url = None
+        self.__clean_html = None
 
     def __parse(self, input):
         doc, self.encoding = build_doc(input)
@@ -149,36 +207,61 @@ class Document:
             doc.resolve_base_href()
         return doc
 
+    def __detect_req(self, params_list, match, req):
+        if match in params_list and not req in params_list:
+            params_list.append(req)
+
+    def parse(self, params_list=["title", "summary", "content", "lead", "first_image_url", "main_image_url"], html_partial=False):
+        #Detect params
+        full_params_list = list(params_list)
+        self.__detect_req(full_params_list, "lead", "summary")
+        self.__detect_req(full_params_list, "main_image_url", "summary")
+        self.__detect_req(full_params_list, "first_image_url", "summary")
+
+        #Pre parsing
+        self.__orig_html = self.__parse(self.input)
+        self.__cut_html = self.__parse(self.input)
+
+        if "content" in full_params_list:
+            self.__content = get_body(self.__parse(self.input))
+        if "title" in full_params_list:
+            self.__title = get_title(self.__orig_html)
+        if "short_title" in full_params_list:
+            self.__short_title = shorten_title(self.__orig_html)
+        if "summary" in full_params_list:
+            self.__summary = self.__get_summary(html_partial)
+        if "lead" in full_params_list:
+            self.__lead = get_lead(self.__cut_html)
+        if "first_image_url" in full_params_list:
+            self.__first_image_url = get_first_image_url(self.__cut_html)
+        if "main_image_url" in full_params_list:
+            if not self.__first_image:
+                self.__first_image_url = get_first_image_url(self.__cut_html)
+            meta_image = get_image_from_meta(self.__orig_html)
+            self.__main_image_url = meta_image or self.__first_image_url
+
     def content(self):
-        return get_body(self._html(True))
+        return self.__content
 
     def title(self):
-        return get_title(self._html(True))
+        return self.__title
 
     def short_title(self):
-        return shorten_title(self._html(True))
-
-    def get_clean_html(self):
-         return clean_attributes(tounicode(self.html))
+        return self.__short_title
 
     def first_image_url(self):
-        """ For good result need call summary before
-        """
-        return get_first_image_url(self._html(False))
+        return self.__first_image_url
 
     def main_image_url(self):
-        """ As first_image_url but with meta images
-        """
-        first_image = get_first_image_url(self._html(False))
-        meta_image = get_image_from_meta(self._html(True))
-        return meta_image or first_image
+        return self.__main_image_url
 
     def lead(self):
-        """ Need call summary before!
-        """
-        return get_lead(self._html(False))
+        return self.__lead
 
-    def summary(self, html_partial=False):
+    def summary(self):
+        return self.__summary
+
+    def __get_summary(self, html_partial=False):
         """Generate the summary of the html docuemnt
 
         :param html_partial: return only the div of the document, don't wrap
@@ -188,14 +271,13 @@ class Document:
         try:
             ruthless = True
             while True:
-                self._html(True)
-                for i in self.tags(self.html, 'script', 'style'):
+                for i in self.__tags(self.__cut_html, 'script', 'style'):
                     i.drop_tree()
-                for i in self.tags(self.html, 'body'):
+                for i in self.__tags(self.__cut_html, 'body'):
                     i.set('id', 'readabilityBody')
                 if ruthless:
-                    self.remove_unlikely_candidates()
-                self.transform_misused_divs_into_paragraphs()
+                    self.__remove_unlikely_candidates()
+                self.__transform_misused_divs_into_paragraphs()
                 candidates = self.__score_paragraphs()
 
                 best_candidate = self.__select_best_candidate(candidates)
@@ -216,9 +298,9 @@ class Document:
                         self.debug(
                             ("Ruthless and lenient parsing did not work. "
                              "Returning raw html"))
-                        article = self.html.find('body')
+                        article = self.__cut_html.find('body')
                         if article is None:
-                            article = self.html
+                            article = self.__cut_html
                 cleaned_article = self.__sanitize(article, candidates)
                 article_length = len(cleaned_article or '')
                 of_acceptable_length = article_length >= self.retry_length
@@ -303,7 +385,7 @@ class Document:
     def __score_paragraphs(self, ):
         candidates = {}
         ordered = []
-        for elem in self.tags(self._html(), "p", "pre", "td"):
+        for elem in self.__tags(self.__cut_html, "p", "pre", "td"):
             parent_node = elem.getparent()
             if parent_node is None:
                 continue
@@ -318,11 +400,11 @@ class Document:
                 continue
 
             if parent_node not in candidates:
-                candidates[parent_node] = self.score_node(parent_node)
+                candidates[parent_node] = self.__score_node(parent_node)
                 ordered.append(parent_node)
 
             if grand_parent_node is not None and grand_parent_node not in candidates:
-                candidates[grand_parent_node] = self.score_node(
+                candidates[grand_parent_node] = self.__score_node(
                     grand_parent_node)
                 ordered.append(grand_parent_node)
 
@@ -374,7 +456,7 @@ class Document:
 
         return weight
 
-    def score_node(self, elem):
+    def __score_node(self, elem):
         content_score = self.__class_weight(elem)
         name = elem.tag.lower()
         if name == "div":
@@ -394,8 +476,8 @@ class Document:
         if self.enable_debug:
             logging.debug(*a)
 
-    def remove_unlikely_candidates(self):
-        for elem in self.html.iter():
+    def __remove_unlikely_candidates(self):
+        for elem in self.__cut_html.iter():
             s = "%s %s" % (elem.get('class', ''), elem.get('id', ''))
             if len(s) < 2:
                 continue
@@ -404,8 +486,8 @@ class Document:
                 self.debug("Removing unlikely candidate - %s" % describe(elem))
                 elem.drop_tree()
 
-    def transform_misused_divs_into_paragraphs(self):
-        for elem in self.tags(self.html, 'div'):
+    def __transform_misused_divs_into_paragraphs(self):
+        for elem in self.__tags(self.__cut_html, 'div'):
             # transform <div>s that do not contain other block elements into
             # <p>s
             #FIXME: The current implementation ignores all descendants that
@@ -418,7 +500,7 @@ class Document:
                 elem.tag = "p"
                 #print "Fixed element "+describe(elem)
 
-        for elem in self.tags(self.html, 'div'):
+        for elem in self.__tags(self.__cut_html, 'div'):
             if elem.text and elem.text.strip():
                 p = fragment_fromstring('<p/>')
                 p.text = elem.text
@@ -437,26 +519,101 @@ class Document:
                     #print 'Dropped <br> at '+describe(elem)
                     child.drop_tree()
 
-    def tags(self, node, *tag_names):
+    def __tags(self, node, *tag_names):
         for tag_name in tag_names:
             for e in node.findall('.//%s' % tag_name):
                 yield e
 
-    def reverse_tags(self, node, *tag_names):
+    def __reverse_tags(self, node, *tag_names):
         for tag_name in tag_names:
             for e in reversed(node.findall('.//%s' % tag_name)):
                 yield e
 
-    def __sanitize(self, node, candidates):
-        for header in self.tags(node, "h1", "h2", "h3", "h4", "h5", "h6"):
-            if self.__class_weight(header) < 0 or self.__get_link_density(header) > 0.33:
-                header.drop_tree()
+    def __get_clean_html(self):
+         return clean_attributes(tounicode(self.__cut_html))
 
-        for elem in self.tags(node, "form", "iframe", "textarea"):
-            elem.drop_tree()
+    def __normalize_images_path(self, image):
+        if not image.attrib["src"].startswith(("//", "https://", "http://")):
+            image.attrib["src"] = "%s%s" % (self.base_url, image.attrib["src"])
+
+    def __drop_node_and_empty_parents(self, node):
+        """
+        Removes given element and hierarchy if everything is empty
+        """
+        while True:
+            parent = node.getparent()
+            if parent is not None:
+                node.drop_tree()
+                if is_empty_node(parent):
+                    node = parent
+                    continue
+            break
+
+    def __move_childrens_to_root(self, node):
+        while True:
+            if len(node) == 1 and node[0].tag == "div":
+                node_for_remove = node[0]
+                for i, elem in enumerate(node_for_remove):
+                     node.insert(i, elem)
+                node.remove(node_for_remove)
+                continue
+            break
+
+        while True:
+            for i, elem in enumerate(node):
+                if elem.tag == "div":
+                    if len(elem) == 1:
+                        node.insert(i, elem[0])
+                        break
+            else:
+                break
+
+    def __sanitize(self, node, candidates):
+        for header in self.__tags(node, "h1", "h2", "h3", "h4", "h5", "h6", "p"):
+            if self.__class_weight(header) < 0 or self.__get_link_density(header) > 0.33:
+                self.__drop_node_and_empty_parents(header)
+
+        # removes empty paragraphs and removes unwanted lead spaces
+        for elem in self.__tags(node, "p"):
+            if elem.text:
+                elem.text = elem.text.lstrip()
+            if is_empty_node(elem):
+                self.__drop_node_and_empty_parents(elem)
+
+        for elem in self.__tags(node, "a"):
+            if "href" in elem.attrib and self.REGEXES['shareLinks'].search(elem.attrib["href"]) or is_empty_node(elem):
+                self.__drop_node_and_empty_parents(elem)
+
+        for elem in self.__tags(node, "span"):
+            if is_empty_node(elem):
+                self.__drop_node_and_empty_parents(elem)
+
+        for elem in self.__tags(node, "form", "iframe", "textarea", "button"):
+            self.__drop_node_and_empty_parents(elem)
+
+        for elem in self.__tags(node, "strong"):
+            elem.tag = "b"
+
+        for elem in self.__tags(node, "em"):
+            elem.tag = "i"
+
+        for elem in self.__tags(node, "img"):
+            for attr in ["width", "height"]:
+                try:
+                    if attr in elem.attrib and int(elem.attrib[attr]) < 70:
+                        self.__drop_node_and_empty_parents(elem)
+                        break 
+                except:
+                    pass
+            else:
+                if "src" in elem.attrib:
+                    self.__normalize_images_path(elem)
+                else:
+                    self.__drop_node_and_empty_parents(elem)
+
         allowed = {}
         # Conditionally clean <table>s, <ul>s, and <div>s
-        for el in self.reverse_tags(node, "table", "ul", "div"):
+        for el in self.__reverse_tags(node, "table", "ul", "div"):
             if el in allowed:
                 continue
             weight = self.__class_weight(el)
@@ -538,7 +695,7 @@ class Document:
                     if siblings and sum(siblings) > 1000:
                         to_remove = False
                         self.debug("Allowing %s" % describe(el))
-                        for desnode in self.tags(el, "table", "ul", "div"):
+                        for desnode in self.__tags(el, "table", "ul", "div"):
                             allowed[desnode] = True
 
                 if to_remove:
@@ -546,8 +703,15 @@ class Document:
                         (content_score, describe(el), weight, reason))
                     #print tounicode(el)
                     #self.debug("pname %s pweight %.3f" %(pname, pweight))
-                    el.drop_tree()
+                    self.__drop_node_and_empty_parents(el)
 
-        self.html = node
-        return self.get_clean_html()
+
+
+        root = node.find(".//body")
+        if root is None:
+            root = node
+        self.__move_childrens_to_root(root)
+
+        self.__cut_html = node
+        return self.__get_clean_html()
 

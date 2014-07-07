@@ -140,7 +140,7 @@ def get_lead(doc):
     if paragraphs:
         lead = paragraphs[0]
         lead = lead.text_content()
-        if len(lead) > 50 and len(lead) < 300:
+        if len(lead) > 40 and len(lead) < 300:
             return lead
 
     return None
