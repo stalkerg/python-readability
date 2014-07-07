@@ -16,8 +16,10 @@ from readability.readability import Document
 import urllib
 
 html = urllib.urlopen(url).read()
-readable_article = Document(html).summary()
-readable_title = Document(html).short_title()
+doc = Document(html)
+doc.parse(["summary", "title"])
+readable_article = doc.summary()
+readable_title = doc.short_title()
 ```
 
 Document() \__init\__ arguments:
@@ -29,3 +31,7 @@ Document() \__init\__ arguments:
  - **retry_length**: acceptable length of the text
  - **positive_keywords**: the list of positive search patterns in classes and ids, for example: ["news-item", "block"]
  - **negative_keywords**: the list of negative search patterns in classes and ids, for example: ["mysidebar", "related", "ads"]
+
+Document() parse arguments:
+ - **params_list**: list params for parse. Accept variants: ["content", "title", "short\_title", "summary", "lead", "first\_image\_url", "main\_image\_url"]
+ - **html_partial**: if True make html without html/body tags.
