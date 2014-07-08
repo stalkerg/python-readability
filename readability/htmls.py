@@ -141,6 +141,7 @@ def get_lead(doc):
         lead = paragraphs[0]
         lead = lead.text_content()
         if len(lead) > 40 and len(lead) < 300:
+            lead = " ".join(lead.split())
             return lead
 
     return None
