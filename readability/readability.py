@@ -117,7 +117,7 @@ class Document:
         "shoutbox", "sidebar", "sponsor",
         "ad-break", "agegate", "pagination",
         "pager", "popup", "tweet",
-        "twitter"
+        "twitter", "infobox", "aol-share"
     ]
     LIKELY_CANDIDATES = [
         "and", "article", "body", 
@@ -136,7 +136,8 @@ class Document:
         "meta", "outbrain", "promo", 
         "related", "scroll", "shoutbox",
         "sidebar", "sponsor", "shopping",
-        "tags", "tool", "widget"
+        "tags", "tool", "widget", 
+        "infobox", "aol-share"
     ]
 
 
@@ -484,7 +485,7 @@ class Document:
             #self.debug(s)
             if self.REGEXES['unlikelyCandidatesRe'].search(s) and (not self.REGEXES['okMaybeItsACandidateRe'].search(s)) and elem.tag not in ['html', 'body']:
                 self.debug("Removing unlikely candidate - %s" % describe(elem))
-                elem.drop_tree()
+                self.__drop_node_and_empty_parents(elem)
 
     def __transform_misused_divs_into_paragraphs(self):
         for elem in self.__tags(self.__cut_html, 'div'):
@@ -517,7 +518,7 @@ class Document:
                     #print "Inserted "+tounicode(p)+" to "+describe(elem)
                 if child.tag == 'br':
                     #print 'Dropped <br> at '+describe(elem)
-                    child.drop_tree()
+                    self.__drop_node_and_empty_parents(child)
 
     def __tags(self, node, *tag_names):
         for tag_name in tag_names:
@@ -567,6 +568,13 @@ class Document:
                         break
             else:
                 break
+
+    def __drop_empty_elements(self, node):
+        for elem in self.__tags(node, "div"):
+            elem_text = elem.text.strip() if elem.text != None else ""
+            elem_tail = elem.tail.strip() if elem.tail != None else "" 
+            if len(elem) == 0 and len(elem_text+elem_tail) == 0:
+                self.__drop_node_and_empty_parents(elem)
 
     def __sanitize(self, node, candidates):
         for header in self.__tags(node, "h1", "h2", "h3", "h4", "h5", "h6", "p"):
@@ -627,7 +635,7 @@ class Document:
             if weight + content_score < 0:
                 self.debug("Cleaned %s with score %6.3f and weight %-3s" %
                     (describe(el), content_score, weight, ))
-                el.drop_tree()
+                self.__drop_node_and_empty_parents(el)
             elif el.text_content().count(",") < 10:
                 counts = {}
                 for kind in ['p', 'img', 'li', 'a', 'embed', 'input']:
@@ -711,6 +719,7 @@ class Document:
         if root is None:
             root = node
         self.__move_childrens_to_root(root)
+        self.__drop_empty_elements(root)
 
         self.__cut_html = node
         return self.__get_clean_html()
