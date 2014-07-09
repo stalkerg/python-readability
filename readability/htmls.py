@@ -145,3 +145,37 @@ def get_lead(doc):
             return lead
 
     return None
+
+def test_upper_path(element, pattern):
+    while element is not None:
+        if pattern.search(element.get("id", "")+element.get("class", "")):
+            return True
+        element = element.getparent()
+    return False
+
+
+BAD_IMAGE_PATTERN = re.compile("avatar", re.I)
+BAD_IMAGE_BLOCK_PATTERN = re.compile("comment", re.I)
+
+def get_image_in_bad_site(doc):
+    
+    items  = [
+        "#content", "#content-wrapper", "#wrapper",
+        ".content", ".content-wrapper", ".wrapper"
+    ]
+    for item in items:
+        wrapper = None
+        elements = doc.cssselect(item)
+        for elem in elements:
+            if not test_upper_path(elem, BAD_IMAGE_BLOCK_PATTERN):
+                wrapper = elem
+                break
+
+        if wrapper is not None:
+            images = wrapper.cssselect("img")
+            if images:
+                if BAD_IMAGE_PATTERN.search(images[0].get("src", "")):
+                    continue
+                return images[0].get("src")
+
+    return None

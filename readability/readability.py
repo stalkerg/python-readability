@@ -16,6 +16,7 @@ from .htmls import shorten_title
 from .htmls import get_first_image_url
 from .htmls import get_image_from_meta
 from .htmls import get_lead
+from .htmls import get_image_in_bad_site
 
 import logging
 from urllib.parse import urlparse
@@ -240,6 +241,9 @@ class Document:
                 self.__first_image_url = get_first_image_url(self.__cut_html)
             meta_image = get_image_from_meta(self.__orig_html)
             self.__main_image_url = meta_image or self.__first_image_url
+            if not self.__main_image_url:
+                self.debug("Not found easy image, use BAD function.")
+                self.__main_image_url = get_image_in_bad_site(self.__orig_html)
 
     def content(self):
         return self.__content
