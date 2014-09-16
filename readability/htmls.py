@@ -105,7 +105,8 @@ def shorten_title(doc):
 
 def get_body(doc):
     [ elem.drop_tree() for elem in doc.xpath('.//script | .//link | .//style') ]
-    raw_html = str(tostring(doc.body or doc))
+    raw_html = tostring(doc.body or doc, encoding='unicode')
+
     try:
         cleaned = clean_attributes(raw_html)
         return cleaned
@@ -126,7 +127,7 @@ def get_image_from_meta(doc):
         og_image_content = og_image[0].get("content")
         if og_image_content:
             return og_image_content
-    
+
     twitter_image = doc.xpath('/html/head/meta[@name="twitter:image:src"]')
     if twitter_image:
         twitter_image_content = twitter_image[0].get("content")
@@ -158,7 +159,7 @@ BAD_IMAGE_PATTERN = re.compile("avatar", re.I)
 BAD_IMAGE_BLOCK_PATTERN = re.compile("comment", re.I)
 
 def get_image_in_bad_site(doc):
-    
+
     items  = [
         "#content", "#content-wrapper", "#wrapper",
         ".content", ".content-wrapper", ".wrapper"
