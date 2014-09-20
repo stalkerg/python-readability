@@ -105,10 +105,8 @@ def shorten_title(doc):
 
 def get_body(doc):
     [ elem.drop_tree() for elem in doc.xpath('.//script | .//link | .//style') ]
-    if len(doc.body):
-        raw_html = tostring(doc.body, encoding='unicode')
-    else:
-        raw_html = tostring(doc, encoding='unicode')
+
+    raw_html = tostring(doc.body if len(doc.body) else doc, encoding='unicode')
 
 
     try:
