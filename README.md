@@ -5,11 +5,11 @@ https://github.com/ftzeng/python-readability (some python3 support).
 I support only Python3 and drop Python2.x. 
 This is not only Python3 fork. I added new features and some fixing like "lead" or "main_image_url". 
 
-Installation::
+Installation:
 
     pip install git+https://github.com/stalkerg/python-readability
 
-Usage::
+Usage:
 
 ```python
 from readability.readability import Document
