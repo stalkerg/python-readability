@@ -13,9 +13,9 @@ Usage:
 
 ```python
 from readability.readability import Document
-import urllib
+import urllib.request
 
-html = urllib.urlopen(url).read()
+html = urllib.request.urlopen(url).read()
 doc = Document(html)
 doc.parse(["summary", "short_title"])
 readable_article = doc.summary()

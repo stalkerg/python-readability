@@ -17,7 +17,7 @@ class MyDocument(Document):
 		print(*a)
 
 
-if __name__ ==  "__main__":
+if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--count', nargs='?', default=None, help='count test')
 	args = parser.parse_args()
@@ -38,20 +38,22 @@ if __name__ ==  "__main__":
 
 	for url in url_list:
 		url_hex = hashlib.md5(url.encode("utf-8")).hexdigest()[:4]
-		print("Start parse url: %s by hash: %s"%(url, url_hex))
+		print("Start parse url: %s by hash: %s" % (url, url_hex))
 		try:
 			request = urllib.request.Request(url)
-			
 			request.add_header('Accept-encoding', 'gzip')
-			request.add_header('User-Agent', "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.103 Safari/537.36")
+			request.add_header(
+				"User-Agent",
+				"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.103 Safari/537.36"
+			)
 			response = urllib.request.urlopen(request)
 		except Exception as e:
-			print("Error load url %s"%e)
+			print("Error load url %s" % e)
 			continue
 
 		html = ""
 		if response.info().get('Content-Encoding') == 'gzip':
-			buf = io.BytesIO( response.read())
+			buf = io.BytesIO(response.read())
 			f = gzip.GzipFile(fileobj=buf)
 			html = f.read()
 		else:

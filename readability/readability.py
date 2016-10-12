@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import re
-import sys
 
 from lxml.etree import tostring
 from lxml.etree import tounicode
@@ -24,6 +23,7 @@ from urllib.parse import urlparse
 
 class Unparseable(ValueError):
     pass
+
 
 def contains_one_or_more_tags(node, *tags):
     """
@@ -74,6 +74,7 @@ def is_empty_node(node):
     """
     return not has_text(node) and not node.getchildren()
 
+
 def describe(node, depth=1):
     if not hasattr(node, 'tag'):
         return "[%s]" % type(node)
@@ -100,6 +101,7 @@ def text_length(i):
 
 regexp_type = type(re.compile('hello, world'))
 
+
 def compile_pattern(elements, mode=re.U):
     if not elements:
         return None
@@ -108,6 +110,7 @@ def compile_pattern(elements, mode=re.U):
     if isinstance(elements, str):
         elements = elements.split(',')
     return re.compile(u'|'.join([re.escape(x.lower()) for x in elements]), mode)
+
 
 class Document:
     """Class to build a etree document out of html."""
@@ -121,26 +124,25 @@ class Document:
         "twitter", "infobox", "aol-share"
     ]
     LIKELY_CANDIDATES = [
-        "and", "article", "body", 
+        "and", "article", "body",
         "column", "main", "shadow"
     ]
     POSITIVE_STRINGS = [
-        "article", "body", "content", 
-        "entry", "hentry", "main", 
-        "page", "pagination", "post", 
+        "article", "body", "content",
+        "entry", "hentry", "main",
+        "page", "pagination", "post",
         "text", "blog", "story"
     ]
     NEGATIVE_STRINGS = [
         "combx", "comment", "com-",
         "contact", "foot", "footer",
         "footnote", "masthead", "media",
-        "meta", "outbrain", "promo", 
+        "meta", "outbrain", "promo",
         "related", "scroll", "shoutbox",
         "sidebar", "sponsor", "shopping",
-        "tags", "tool", "widget", 
+        "tags", "tool", "widget",
         "infobox", "aol-share"
     ]
-
 
     REGEXES = {
         'unlikelyCandidatesRe': compile_pattern(UNLIKELY_CANDIDATES, re.I),
@@ -151,9 +153,11 @@ class Document:
         'divToPElementsRe': re.compile('<(a|blockquote|dl|div|img|ol|p|pre|table|ul)', re.I)
     }
 
-    def __init__(self, input, 
+    def __init__(
+            self,
+            input,
             base_url=None, debug=False,
-            positive_keywords=None, negative_keywords=None, 
+            positive_keywords=None, negative_keywords=None,
             min_text_length=25, retry_length=250):
         """Generate the document
 
@@ -187,7 +191,7 @@ class Document:
         self.positive_keywords = compile_pattern(positive_keywords)
         self.negative_keywords = compile_pattern(negative_keywords)
 
-        #Cache attributes
+        # Cache attributes
         self.__orig_html = None
         self.__cut_html = None
         self.__title = None
@@ -210,17 +214,20 @@ class Document:
         return doc
 
     def __detect_req(self, params_list, match, req):
-        if match in params_list and not req in params_list:
+        if match in params_list and req not in params_list:
             params_list.append(req)
 
-    def parse(self, params_list=["title", "summary", "content", "lead", "first_image_url", "main_image_url"], html_partial=False):
-        #Detect params
+    def parse(
+            self,
+            params_list=["title", "summary", "content", "lead", "first_image_url", "main_image_url"],
+            html_partial=False):
+        # Detect params
         full_params_list = list(params_list)
         self.__detect_req(full_params_list, "lead", "summary")
         self.__detect_req(full_params_list, "main_image_url", "summary")
         self.__detect_req(full_params_list, "first_image_url", "summary")
 
-        #Pre parsing
+        # Pre parsing
         self.__orig_html = self.__parse(self.input)
         self.__cut_html = self.__parse(self.input)
 
@@ -288,7 +295,9 @@ class Document:
                 best_candidate = self.__select_best_candidate(candidates)
 
                 if best_candidate:
-                    article = self.__get_article(candidates, best_candidate,
+                    article = self.__get_article(
+                            candidates,
+                            best_candidate,
                             html_partial=html_partial)
                 else:
                     if ruthless:
@@ -338,8 +347,7 @@ class Document:
             if sibling is best_elem:
                 append = True
             sibling_key = sibling  # HashableElement(sibling)
-            if sibling_key in candidates and \
-                candidates[sibling_key]['content_score'] >= sibling_score_threshold:
+            if sibling_key in candidates and candidates[sibling_key]['content_score'] >= sibling_score_threshold:
                 append = True
 
             if sibling.tag == "p":
@@ -349,9 +357,7 @@ class Document:
 
                 if node_length > 80 and link_density < 0.25:
                     append = True
-                elif node_length <= 80 \
-                    and link_density == 0 \
-                    and re.search('\.( |$)', node_content):
+                elif node_length <= 80 and link_density == 0 and re.search('\.( |$)', node_content):
                     append = True
 
             if append:
@@ -361,7 +367,7 @@ class Document:
                     output.append(sibling)
                 else:
                     output.getchildren()[0].getchildren()[0].append(sibling)
-        #if output is not None:
+        # if output is not None:
         #    output.append(best_elem)
         return output
 
@@ -383,7 +389,7 @@ class Document:
         link_length = 0
         for i in elem.findall(".//a"):
             link_length += text_length(i)
-        
+
         total_length = text_length(elem)
         return float(link_length) / max(total_length, 1)
 
@@ -416,7 +422,7 @@ class Document:
             content_score = 1
             content_score += len(inner_text.split(','))
             content_score += min((inner_text_len / 100), 3)
-            
+
             candidates[parent_node]['content_score'] += content_score
             if grand_parent_node is not None:
                 candidates[grand_parent_node]['content_score'] += content_score / 2.0
@@ -486,8 +492,12 @@ class Document:
             s = "%s %s" % (elem.get('class', ''), elem.get('id', ''))
             if len(s) < 2:
                 continue
-            #self.debug(s)
-            if self.REGEXES['unlikelyCandidatesRe'].search(s) and (not self.REGEXES['okMaybeItsACandidateRe'].search(s)) and elem.tag not in ['html', 'body']:
+            # self.debug(s)
+            if (
+                self.REGEXES['unlikelyCandidatesRe'].search(s) and
+                (not self.REGEXES['okMaybeItsACandidateRe'].search(s)) and
+                elem.tag not in ['html', 'body']
+            ):
                 self.debug("Removing unlikely candidate - %s" % describe(elem))
                 self.__drop_node_and_empty_parents(elem)
 
@@ -495,15 +505,15 @@ class Document:
         for elem in self.__tags(self.__cut_html, 'div'):
             # transform <div>s that do not contain other block elements into
             # <p>s
-            #FIXME: The current implementation ignores all descendants that
+            # FIXME: The current implementation ignores all descendants that
             # are not direct children of elem
             # This results in incorrect results in case there is an <img>
             # buried within an <a> for example
             if not self.REGEXES['divToPElementsRe'].search(
                     str(b''.join(map(tostring, list(elem))))):
-                #self.debug("Altering %s to p" % (describe(elem)))
+                # self.debug("Altering %s to p" % (describe(elem)))
                 elem.tag = "p"
-                #print "Fixed element "+describe(elem)
+                # print "Fixed element "+describe(elem)
 
         for elem in self.__tags(self.__cut_html, 'div'):
             if elem.text and elem.text.strip():
@@ -511,7 +521,7 @@ class Document:
                 p.text = elem.text
                 elem.text = None
                 elem.insert(0, p)
-                #print "Appended "+tounicode(p)+" to "+describe(elem)
+                # print "Appended "+tounicode(p)+" to "+describe(elem)
 
             for pos, child in reversed(list(enumerate(elem))):
                 if child.tail and child.tail.strip():
@@ -519,9 +529,9 @@ class Document:
                     p.text = child.tail
                     child.tail = None
                     elem.insert(pos + 1, p)
-                    #print "Inserted "+tounicode(p)+" to "+describe(elem)
+                    # print "Inserted "+tounicode(p)+" to "+describe(elem)
                 if child.tag == 'br':
-                    #print 'Dropped <br> at '+describe(elem)
+                    # print 'Dropped <br> at '+describe(elem)
                     self.__drop_node_and_empty_parents(child)
 
     def __tags(self, node, *tag_names):
@@ -535,7 +545,7 @@ class Document:
                 yield e
 
     def __get_clean_html(self):
-         return clean_attributes(tounicode(self.__cut_html))
+        return clean_attributes(tounicode(self.__cut_html))
 
     def __normalize_images_path(self, image):
         if not image.attrib["src"].startswith(("//", "https://", "http://")):
@@ -559,7 +569,7 @@ class Document:
             if len(node) == 1 and node[0].tag == "div":
                 node_for_remove = node[0]
                 for i, elem in enumerate(node_for_remove):
-                     node.insert(i, elem)
+                    node.insert(i, elem)
                 node.remove(node_for_remove)
                 continue
             break
@@ -575,8 +585,8 @@ class Document:
 
     def __drop_empty_elements(self, node):
         for elem in self.__tags(node, "div"):
-            elem_text = elem.text.strip() if elem.text != None else ""
-            elem_tail = elem.tail.strip() if elem.tail != None else "" 
+            elem_text = elem.text.strip() if elem.text is not None else ""
+            elem_tail = elem.tail.strip() if elem.tail is not None else ""
             if len(elem) == 0 and len(elem_text+elem_tail) == 0:
                 self.__drop_node_and_empty_parents(elem)
 
@@ -614,7 +624,7 @@ class Document:
                 try:
                     if attr in elem.attrib and int(elem.attrib[attr]) < 70:
                         self.__drop_node_and_empty_parents(elem)
-                        break 
+                        break
                 except:
                     pass
             else:
@@ -631,14 +641,13 @@ class Document:
             weight = self.__class_weight(el)
             if el in candidates:
                 content_score = candidates[el]['content_score']
-                #print '!',el, '-> %6.3f' % content_score
+                # print '!',el, '-> %6.3f' % content_score
             else:
                 content_score = 0
             tag = el.tag
 
             if weight + content_score < 0:
-                self.debug("Cleaned %s with score %6.3f and weight %-3s" %
-                    (describe(el), content_score, weight, ))
+                self.debug("Cleaned %s with score %6.3f and weight %-3s" % (describe(el), content_score, weight))
                 self.__drop_node_and_empty_parents(el)
             elif el.text_content().count(",") < 10:
                 counts = {}
@@ -658,7 +667,7 @@ class Document:
                 to_remove = False
                 reason = ""
 
-                #if el.tag == 'div' and counts["img"] >= 1:
+                # if el.tag == 'div' and counts["img"] >= 1:
                 #    continue
                 if counts["p"] and counts["img"] > counts["p"]:
                     reason = "too many images (%s)" % counts["img"]
@@ -683,27 +692,27 @@ class Document:
                 elif (counts["embed"] == 1 and content_length < 75) or counts["embed"] > 1:
                     reason = "<embed>s with too short content length, or too many <embed>s"
                     to_remove = True
-                    #find x non empty preceding and succeeding siblings
+                    # find x non empty preceding and succeeding siblings
                     i, j = 0, 0
                     x = 1
                     siblings = []
                     for sib in el.itersiblings():
-                        #self.debug(sib.text_content())
+                        # self.debug(sib.text_content())
                         sib_content_length = text_length(sib)
                         if sib_content_length:
-                            i =+ 1
+                            i += 1
                             siblings.append(sib_content_length)
                             if i == x:
                                 break
                     for sib in el.itersiblings(preceding=True):
-                        #self.debug(sib.text_content())
+                        # self.debug(sib.text_content())
                         sib_content_length = text_length(sib)
                         if sib_content_length:
-                            j =+ 1
+                            j += 1
                             siblings.append(sib_content_length)
                             if j == x:
                                 break
-                    #self.debug(str(siblings))
+                    # self.debug(str(siblings))
                     if siblings and sum(siblings) > 1000:
                         to_remove = False
                         self.debug("Allowing %s" % describe(el))
@@ -711,13 +720,13 @@ class Document:
                             allowed[desnode] = True
 
                 if to_remove:
-                    self.debug("Cleaned %6.3f %s with weight %s cause it has %s." %
-                        (content_score, describe(el), weight, reason))
-                    #print tounicode(el)
-                    #self.debug("pname %s pweight %.3f" %(pname, pweight))
+                    self.debug(
+                        "Cleaned %6.3f %s with weight %s cause it has %s." %
+                        (content_score, describe(el), weight, reason)
+                    )
+                    # print tounicode(el)
+                    # self.debug("pname %s pweight %.3f" %(pname, pweight))
                     self.__drop_node_and_empty_parents(el)
-
-
 
         root = node.find(".//body")
         if root is None:
@@ -727,4 +736,3 @@ class Document:
 
         self.__cut_html = node
         return self.__get_clean_html()
-
